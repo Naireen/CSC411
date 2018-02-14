@@ -1,0 +1,8 @@
+unzip the progect.a1_zip file, and then run faces.py, which is included in the file submission as well as within the zip file, and that will create all the files necessary to run the notebooks i have and will duplicate the results from that. 
+
+
+
+###SIDENOTES###
+This archive also includes the script recolor_and_resize which was used for processing. This file with not be needed to be run, and will NOT run when faces.py is called as the raw cropped images arent included. NOte, that there must be a cropped and cropped2 folder created for this recolor_and_Resize file to fun. 
+
+
