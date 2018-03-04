@@ -1,0 +1,24 @@
+To run the code for parts 2 to 6, run the folling script
+
+python3 digits.py
+
+This just calls the three needed scripts.To see what each of the three scripts are doing individually, you can check the following notebooks
+
+BeginningPart.ipynb # contains code for parts 2 to 6
+MomemtumContours.ipynb # this is part 5
+PlotContours.ipynb # this is part 6
+digits.py is written using python3, and the other code for later parts is in python2.
+
+
+To run part 8, type "python faces.py" into terminal. This file is written in Python 2.
+
+Expected output: Graph of learning curve as shown in report. Also prints the Training Set, Test Set and Validation Set accuracies at every 100 iterations. 
+
+
+To run part 9, type "python part9.py" into terminal. This file is written in Python 2.
+
+Expected output: Figures of weight visualizations betweeen input and hidden layer. 
+
+To run part 10, type "python deepfaces.py" into terminal. This file is written in Python 2.
+
+Expected output: Graph of learning curve as shown in report. Also prints the Training Set, Test Set and Validation Set accuracies at every 100 iterations
