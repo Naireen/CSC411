@@ -11,6 +11,7 @@ import torch.optim as optim
 import torch.distributions
 from torch.autograd import Variable
 import pickle
+import os
 
 class Environment(object):
     """
@@ -109,6 +110,7 @@ class Policy(nn.Module):
     def __init__(self, input_size=27, hidden_size=40, output_size=9):
         super(Policy, self).__init__()
         # TODO
+        self.hidden_layer_size = hidden_size
         # input is 27 dim vector, output is 9 dim vector
         self.features = nn.Sequential(
             # an affine operation: y = Wx + b
@@ -201,29 +203,55 @@ def get_reward(status):
     """Returns a numeric given an environment status."""
     return {
             Environment.STATUS_VALID_MOVE  : 5, # TODO
-            Environment.STATUS_INVALID_MOVE: -20,
-            Environment.STATUS_WIN         : 20,
+            Environment.STATUS_INVALID_MOVE: -40, # -20
+            Environment.STATUS_WIN         : 40,
             Environment.STATUS_TIE         : 5,
             Environment.STATUS_LOSE        : 0
     }[status]
 
+
 def train(policy, env, gamma=1.0, log_interval=1000):
     """Train policy gradient."""
+    #player_label = env.turn
     optimizer = optim.Adam(policy.parameters(), lr=0.001)
     scheduler = torch.optim.lr_scheduler.StepLR(
             optimizer, step_size=10000, gamma=0.9)
     running_reward = 0
-    ep_length = 50000
+    ep_length = 200000
     final_rewards = np.zeros(ep_length)
+    player_ids = np.zeros(ep_length)
+    final_statuses = np.zeros_like(player_ids)
+    path = "ttt_%d" % policy.hidden_layer_size
+    #check if saved directory exists, if not, create it
+    try:
+        os.stat(path)
+    except:
+        os.mkdir(path)
+
     for i_episode in range(ep_length):
         saved_rewards = []
         saved_logprobs = []
+        #np.random.seed(i_episode) # varying this will vary new player when env.reset is called
+        #pass random initial player start
         state = env.reset()
+        player_label = env.turn
+        #print(env.turn)
         #print("Initial State", state  )
         done = False
         while not done:
-            action, logprob = select_action(policy, state)
-            state, status, done = env.play_against_random(action)
+            if player_label ==1:
+                #print("Play original", player_label)
+                action, logprob = select_action(policy, state)
+                state, status, done = env.play_against_random(action)
+            else: # player id is 2, so it goes second
+                #print("enf turn", env.turn)
+                state , status, done = env.play_against_random_after(policy)
+                if not done:
+                    #print("pl", env.turn)
+                    action, logprob = select_action(policy, state)
+                    state, status, done = env.step(action)
+
+
             reward = get_reward(status)
             saved_logprobs.append(logprob)
             saved_rewards.append(reward)
@@ -231,9 +259,11 @@ def train(policy, env, gamma=1.0, log_interval=1000):
         R = compute_returns(saved_rewards)[0]
         running_reward += R
         final_rewards[i_episode] = R
+        player_ids[i_episode] = player_label
+        final_statuses[i_episode] = get_reward(status) # last status in the game
         finish_episode(saved_rewards, saved_logprobs, gamma)
 
-        if i_episode % log_interval == 0:
+        if i_episode % log_interval == (log_interval-1):
             print('Episode {}\tAverage return: {:.2f}'.format(
                 i_episode,
                 running_reward / log_interval))
@@ -241,14 +271,23 @@ def train(policy, env, gamma=1.0, log_interval=1000):
 
         if i_episode % (log_interval) == 0:
             torch.save(policy.state_dict(),
-                       "ttt/policy-%d.pkl" % i_episode)
+                       "ttt_%d/policy-%d.pkl" % (policy.hidden_layer_size ,i_episode))
 
         if i_episode % 1 == 0: # batch_size
             optimizer.step()
             scheduler.step()
             optimizer.zero_grad()
 
-    np.savetxt("rewards_new_100.txt", final_rewards)
+    #save very last model
+    torch.save(policy.state_dict(),
+                       "ttt_%d/policy-%d.pkl" % (policy.hidden_layer_size ,i_episode))
+
+    total_data = np.vstack((player_ids, final_rewards, final_statuses))
+    np.savetxt("rewards_new_{}_{}_iterations.txt".format(policy.hidden_layer_size, ep_length), total_data)
+    #np.savetxt("rewards_new_100.txt", final_rewards)
+
+
+
 
 def first_move_distr(policy, env):
     """Display the distribution of first moves."""
@@ -267,11 +306,11 @@ def load_weights(policy, episode, folder):
 
 if __name__ == '__main__':
     import sys
-    policy = Policy(hidden_size=100)
+    policy = Policy(hidden_size=40)
     env = Environment()
     print("Policy", policy)
 
-    '''
+    #'''
     if len(sys.argv) == 1:
         # `python tictactoe.py` to train the agent
         train(policy, env)
@@ -281,7 +320,7 @@ if __name__ == '__main__':
         ep = int(sys.argv[1])
         load_weights(policy, ep)
         print(first_move_distr(policy, env))
-    '''
+    #'''
     def print_state():
         state = env.grid
         state = torch.from_numpy(state).long().unsqueeze(0)
